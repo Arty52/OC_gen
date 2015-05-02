@@ -1,8 +1,6 @@
 #Art Grichine
-#Zeed Jarrah
 #ArtGrichine@csu.fullerton.edu
-#ZJarrah@csu.fullerton.edu
-#Syntax Analyser (Assignment 2)
+#Object code generator (Assignment 3)
 #Requires Python version > 2.5 because of use of ternary operations
 
 import sys
