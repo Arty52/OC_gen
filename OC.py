@@ -20,7 +20,135 @@ peek_next = Lex()
 _filename = None
 outputFileHandle = None
 _error = True
+_qual = None
+_MEMORY = 1000
+
+
+class Symbol:
+    global _MEMORY
     
+    def __init__(self, identifier):
+        global _MEMORY
+        #incriment memory address and add to new symbol
+        self._address = _MEMORY+1
+        _MEMORY += 1
+        
+        self._type = _qual
+        self._lexeme = identifier.lexeme
+    
+    def getSymbol(self):
+        return self._lexeme
+
+class Symbol_Table:
+    def __init__(self):
+        self._symbol_table = []
+    
+    def insert(self, symbol):
+        if not self.look_up_lex(symbol.lexeme):
+   #         print('symbol.lexeme: '+symbol.lexeme)
+            self._symbol_table.append(Symbol(symbol))
+        else:
+            print('ERROR: Symbol {} already exists in the symbol table. Cannot add symbol twice'.format(symbol.lexeme))
+            sys.exit()
+    
+    #looks up given lexeme against symbols already in the Symbol Table
+    def look_up_lex(self, lex):
+        for item in self._symbol_table:
+            if item.getSymbol() == lex: 
+                return True
+            else:
+                return False
+
+    # verify if instance exists in symbol table. If not display error and exit program
+    def verify(self, crnt):
+        if not self.look_up_lex(crnt.lexeme):
+            print('ERROR: Symbol {} is not located in the symbol table. Aborting process...'.format(crnt.lexeme))
+            sys.exit()
+    
+    def list(self):
+        print('Symbol Table')
+        print('============')
+        for item in self._symbol_table:
+            print('{0:8}{1:<8}{2:1}'.format(item._lexeme, item._address, item._type))
+
+class Instruction:
+    def __init__(self, address, op, oprnd):
+        self._address = address
+        self._operation = op
+        self._operand = oprnd
+    
+    # Address
+    def getAddress(self):
+        return self._address
+    def setAddress(self,address):
+        self._address = address
+    
+    # Make property of get and set methods
+    addr = property(getAddress, setAddress)
+    
+    # Operation
+    def getOperation(self):
+        return self._operation
+    def setOperation(self,operation):
+        self._operation = operation
+    
+    # Make property of get and set methods
+    oppr = property(getOperation, setOperation)
+    
+    # Operand
+    def getOperand(self):
+        return self._operand
+    def setOperand(self,operand):
+        self._operand = operand
+    
+    # Make property of get and set methods
+    oprnd = property(getOperand, setOperand)
+
+class Instr_Table:
+    def __init__(self, address=1):
+        self._table = []
+        self._stack = []
+        self._inst_address = address
+    
+    # Getters
+    def getTable(self):
+        return self._table
+    def getStack(self):
+        return self._stack
+    def getCurrentAddress(self):
+        return self._inst_address
+    
+    # Generate instruction
+    def gen_instr(self, op, oprnd):
+        #append instance of Instruction object to table
+        self.table.append(Instruction(self._inst_address, op, oprnd))
+        #incriment current instruction address
+        self._inst_address +=1
+    
+    # Pop stack
+    def pop_stack(self):
+        return self._stack.pop()
+    
+    # Push to stack
+    def push_stack(self, addr):
+        self._stack.append(addr)
+    
+    #Back Patch
+    def back_patch(self, addr):
+        self._table[pop_stack()-1].oprnd = addr
+    
+    def print_table(self):
+        print('Assembly Code')
+        print('=============')
+        for entry in self._table:
+            if entry.oprnd < 0:
+                print('{0:4}{1:8}'.format(entry.addr, entry.oppr))
+            else:
+                print('{0:4}{1:<8}{2:1}'.format(entry.addr, entry.oppr, entry.oprnd))
+
+#initialize symbol_table and instr_table
+symbol_table = Symbol_Table()
+
 #reset global variables
 def reset():
     global toProcess                    #initilize toProcess variable as global so we can change it
@@ -230,12 +358,20 @@ def parameter():
 
 # <Qualifier> ::= int | boolean | real
 def qualifier():
+    global _qual
     if _printcmd:
         print('<Qualifier> ::= int | boolean | real')
     if _printfile:
         print('<Qualifier> ::= int | boolean | real', file = outputFileHandle)
     
     if current.lexeme == 'int' or current.lexeme == 'boolean' or current.lexeme == 'real':
+        if current.lexeme == 'int':
+            _qual = 'int'
+        elif current.lexeme == 'boolean':
+            _qual = 'boolean'
+        elif current.lexeme == 'real':
+            _qual = 'real'
+        
         getNext()
     else:
         error('int | boolean | real')
@@ -296,17 +432,23 @@ def declaration():
         print('<Declaration> ::= <Qualifier> <IDs>', file = outputFileHandle)
     
     qualifier()
-    ids()
+    ids(True)
 
 
 # <IDs> ::=  <Identifier> | <Identifier>, <IDs>
-def ids():
+def ids(add):
     if _printcmd:
         print('<IDs> ::=  <Identifier> | <Identifier>, <IDs>')
     if _printfile:
         print('<IDs> ::=  <Identifier> | <Identifier>, <IDs>', file = outputFileHandle)
 
     if current.token == 'identifier':
+        
+        if add:
+            symbol_table.insert(current)
+        else:
+            symbol_table.verify(current)
+        
         getNext()
         
         #<Identifier>, <IDs>    break when no ',' after the identifier
@@ -314,7 +456,16 @@ def ids():
             if current.lexeme == ',':
                 getNext()
                 
-                getNext() if current.token == 'identifier' else error('<Identifier>')
+                if current.token == 'identifier':
+                    
+                    if add:
+                        symbol_table.insert(current)
+                    else:
+                        symbol_table.verify(current)
+                    
+                    getNext()
+                else:
+                     error('<Identifier>')
                     
             else:
                 break
@@ -395,7 +546,7 @@ def assign():
     
         if current.lexeme == ':=':
             getNext()
-            expression()
+            expression()            
         
             getNext() if current.lexeme == ';' else error(';')
                 
@@ -523,7 +674,7 @@ def read():
         
         if current.lexeme == '(':
             getNext()
-            ids()
+            ids(False)
             
             if current.lexeme == ')':
                 getNext()
@@ -668,7 +819,7 @@ def primary():
         #must test if <Identifier> [<IDs>], if no bracket then its just an identifier
         if current.lexeme == '[':
             getNext()
-            ids()
+            ids(false)
             getNext() if current.lexeme == ']' else error(']')
 
     #    <Integer>
@@ -739,6 +890,9 @@ def main():
             
             #report to user where the contents of the file have been saved
             print('Your syntactic analysis of {} has been saved as {} in the working directory.'.format(_filename,_filename + '.SA'))
+        
+        #print tables <DEBUG>
+        symbol_table.list()
         
         #ask user if they would like to run another file    
         _continue = input('\nWould you like to process another file? (yes/no): ')
