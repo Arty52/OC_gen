@@ -30,7 +30,7 @@ class Symbol:
     def __init__(self, identifier):
         global _MEMORY
         #incriment memory address and add to new symbol
-        self._address = _MEMORY+1
+        self._address = _MEMORY
         _MEMORY += 1
         
         self._type = _qual
@@ -45,7 +45,6 @@ class Symbol_Table:
     
     def insert(self, symbol):
         if not self.look_up_lex(symbol.lexeme):
-   #         print('symbol.lexeme: '+symbol.lexeme)
             self._symbol_table.append(Symbol(symbol))
         else:
             print('ERROR: Symbol {} already exists in the symbol table. Cannot add symbol twice'.format(symbol.lexeme))
@@ -54,16 +53,20 @@ class Symbol_Table:
     #looks up given lexeme against symbols already in the Symbol Table
     def look_up_lex(self, lex):
         for item in self._symbol_table:
+            #if match found then return address
             if item.getSymbol() == lex: 
-                return True
-            else:
-                return False
+                return item._address
+        
+        #return False if lex doesnt match any found in the symbol table
+        return False
 
     # verify if instance exists in symbol table. If not display error and exit program
     def verify(self, crnt):
         if not self.look_up_lex(crnt.lexeme):
             print('ERROR: Symbol {} is not located in the symbol table. Aborting process...'.format(crnt.lexeme))
             sys.exit()
+        else:
+            return self.look_up_lex(crnt.lexeme)
     
     def list(self):
         print('Symbol Table')
@@ -121,7 +124,7 @@ class Instr_Table:
     # Generate instruction
     def gen_instr(self, op, oprnd):
         #append instance of Instruction object to table
-        self.table.append(Instruction(self._inst_address, op, oprnd))
+        self._table.append(Instruction(self._inst_address, op, oprnd))
         #incriment current instruction address
         self._inst_address +=1
     
@@ -142,12 +145,13 @@ class Instr_Table:
         print('=============')
         for entry in self._table:
             if entry.oprnd < 0:
-                print('{0:4}{1:8}'.format(entry.addr, entry.oppr))
+                print('{0:<4}{1:8}'.format(entry.addr, entry.oppr))
             else:
-                print('{0:4}{1:<8}{2:1}'.format(entry.addr, entry.oppr, entry.oprnd))
+                print('{0:<4}{1:<8}{2:1}'.format(entry.addr, entry.oppr, entry.oprnd))
 
 #initialize symbol_table and instr_table
 symbol_table = Symbol_Table()
+instr_table = Instr_Table()
 
 #reset global variables
 def reset():
@@ -542,11 +546,15 @@ def assign():
         print('<Assign> ::=   <Identifier> := <Expression> ;', file = outputFileHandle)
     
     if current.token == 'identifier':
+        save = symbol_table.verify(current)
+        
         getNext()
     
         if current.lexeme == ':=':
             getNext()
-            expression()            
+            expression()
+            
+            instr_table.gen_instr('POPM', save)
         
             getNext() if current.lexeme == ';' else error(';')
                 
@@ -759,6 +767,8 @@ def expressionPrime():
     if current.lexeme == '+' or current.lexeme == '-':
         getNext()
         term()
+        print('\n\nFLAG\n\n')
+        instr_table.gen_instr('ADD', -999)
         expressionPrime()
     elif current.token == 'unknown':
         error('+, -, <empty>')    
@@ -893,6 +903,7 @@ def main():
         
         #print tables <DEBUG>
         symbol_table.list()
+        instr_table.print_table()
         
         #ask user if they would like to run another file    
         _continue = input('\nWould you like to process another file? (yes/no): ')
