@@ -764,11 +764,15 @@ def expressionPrime():
     if _printfile:
         print('<ExpressionPrime> ::= + <Term> <ExpressionPrime> | - <Term> <ExpressionPrime> | <empty>', file = outputFileHandle)
     
-    if current.lexeme == '+' or current.lexeme == '-':
+    if current.lexeme == '+':
         getNext()
         term()
-        print('\n\nFLAG\n\n')
         instr_table.gen_instr('ADD', -999)
+        expressionPrime()
+    elif current.lexeme == '-':
+        getNext()
+        term()
+        instr_table.gen_instr('SUB', -999)
         expressionPrime()
     elif current.token == 'unknown':
         error('+, -, <empty>')    
