@@ -1,0 +1,10 @@
+@@
+int i, max, sum;
+boolean x;
+@@
+sum := 0;
+max := 2;
+i := sum + max;
+max := 3 / i;
+max := i - sum;
+sum := i * sum;

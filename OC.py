@@ -797,9 +797,15 @@ def termPrime():
     if _printfile:
         print('<TermPrime> ::= * <Factor> <TermPrime> | / <Factor> <TermPrime> | <empty>', file = outputFileHandle)
     
-    if current.lexeme == '*' or current.lexeme == '/':
+    if current.lexeme == '*':
         getNext()
         factor()
+        instr_table.gen_instr('MUL', -999)
+        termPrime()
+    if current.lexeme == '/':
+        getNext()
+        factor()
+        instr_table.gen_instr('DIV', -999)
         termPrime()
     elif current.token == 'unknown':
         error('*, /, <empty>')    
@@ -829,6 +835,8 @@ def primary():
         print('<Primary> ::= <Identifier> | <Integer> | <Identifier> [<IDs>] | ( <Expression> ) | <Real> | true | false', file = outputFileHandle)
 
     if current.token == 'identifier':
+        instr_table.gen_instr('PUSHM', symbol_table.verify(current))
+        
         getNext()
         #must test if <Identifier> [<IDs>], if no bracket then its just an identifier
         if current.lexeme == '[':
