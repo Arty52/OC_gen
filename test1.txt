@@ -3,6 +3,7 @@ int i, max, sum;
 boolean x;
 @@
 sum := 0;
+while(i < max) i:= i+1;
 max := 2;
 i := sum + max;
 max := 3 / i;

@@ -138,7 +138,8 @@ class Instr_Table:
     
     #Back Patch
     def back_patch(self, addr):
-        self._table[pop_stack()-1].oprnd = addr
+        temp = self.pop_stack()
+        self._table[temp-1].oprnd = addr
     
     def print_table(self):
         print('Assembly Code')
@@ -706,6 +707,7 @@ def _while():
         print('<While> ::= while ( <Condition>  )  <Statement>', file = outputFileHandle)
     
     if current.lexeme == 'while':
+        instr_table.gen_instr('LABEL', -999)
         getNext()
         
         if current.lexeme == '(':
@@ -715,6 +717,8 @@ def _while():
             if current.lexeme == ')':
                 getNext()
                 statement()
+                instr_table.gen_instr('JUMP', symbol_table.verify(current))
+                instr_table.back_patch(instr_table.getCurrentAddress())
             else:
                 error(')')
         
@@ -732,8 +736,13 @@ def condition():
         print('<Condition> ::= <Expression> <Relop> <Expression>', file = outputFileHandle)
     
     expression()
-    relop()
+    inst = relop()
     expression()
+    
+    if inst:
+        instr_table.gen_instr(inst, -999)
+        instr_table.push_stack(instr_table.getCurrentAddress())
+        instr_table.gen_instr('JUMPZ', -999)
 
 # <Relop> ::=   = |  !=  |   >   | <   |  =>   | <=
 def relop():
@@ -742,10 +751,22 @@ def relop():
     if _printfile:
         print('<Relop> ::=   = |  !=  |   >   | <   |  =>   | <=', file = outputFileHandle)
     
-    if current.lexeme == '=' or current.lexeme == '!=' or current.lexeme == '>' or current.lexeme == '<' or current.lexeme == '=>' or current.lexeme == '<=':
+    if current.lexeme == '=':
         getNext()
+        return 'EQU'
+    elif current.lexeme == '!=':
+        getNext()
+        return 'NEQ'
+    elif current.lexeme == '>':
+        getNext()
+        return 'GRT'
+    elif current.lexeme == '<':
+        getNext()
+        return 'LES'
+    elif current.lexeme == '=>' or current.lexeme == '<=':
+        return 'relop'
     else:
-        error('= |  !=  |   >   | <   |  =>   | <=') 
+        error('= |  !=  |   >   | <   |  =>   | <=')
 
 # <Expression> ::= <Term> <ExpressionPrime>
 def expression():
