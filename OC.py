@@ -18,7 +18,8 @@ toProcess = deque()
 current = Lex()
 peek_next = Lex()
 _filename = None
-outputFileHandle = None
+out_fh_SA = None
+out_fh_OC = None
 _error = True
 _qual = None
 _MEMORY = 1000
@@ -48,6 +49,7 @@ class Symbol_Table:
             self._symbol_table.append(Symbol(symbol))
         else:
             print('ERROR: Symbol {} already exists in the symbol table. Cannot add symbol twice'.format(symbol.lexeme))
+            print('ERROR: Symbol {} already exists in the symbol table. Cannot add symbol twice'.format(symbol.lexeme), file = out_fh_OC)
             sys.exit()
     
     #looks up given lexeme against symbols already in the Symbol Table
@@ -64,15 +66,17 @@ class Symbol_Table:
     def verify(self, crnt):
         if not self.look_up_lex(crnt.lexeme):
             print('ERROR: Symbol {} is not located in the symbol table. Aborting process...'.format(crnt.lexeme))
+            print('ERROR: Symbol {} is not located in the symbol table. Aborting process...'.format(crnt.lexeme), file = out_fh_OC)
             sys.exit()
         else:
             return self.look_up_lex(crnt.lexeme)
     
     def list(self):
-        print('Symbol Table')
-        print('============')
+        print('{0:^38}'.format('Symbol Table'), file = out_fh_OC)
+        print('======================================', file = out_fh_OC)
+        print('{0:14}{1:<19}{2:1}'.format('identifier', 'Memory Location', 'Type'), file = out_fh_OC)
         for item in self._symbol_table:
-            print('{0:8}{1:<8}{2:1}'.format(item._lexeme, item._address, item._type))
+            print('{0:14}{1:<19}{2:1}'.format(item._lexeme, item._address, item._type), file = out_fh_OC)
 
 class Instruction:
     def __init__(self, address, op, oprnd):
@@ -142,13 +146,13 @@ class Instr_Table:
         self._table[temp-1].oprnd = addr
     
     def print_table(self):
-        print('Assembly Code')
-        print('=============')
+        print('{0:^20}'.format('Assembly Code'), file = out_fh_OC)
+        print('====================', file = out_fh_OC)
         for entry in self._table:
             if entry.oprnd < 0:
-                print('{0:<4}{1:8}'.format(entry.addr, entry.oppr))
+                print('{0:<4}{1:8}'.format(entry.addr, entry.oppr), file = out_fh_OC)
             else:
-                print('{0:<4}{1:<8}{2:1}'.format(entry.addr, entry.oppr, entry.oprnd))
+                print('{0:<4}{1:<8}{2:1}'.format(entry.addr, entry.oppr, entry.oprnd), file = out_fh_OC)
 
 #initialize symbol_table and instr_table
 symbol_table = Symbol_Table()
@@ -157,18 +161,30 @@ instr_table = Instr_Table()
 #reset global variables
 def reset():
     global toProcess                    #initilize toProcess variable as global so we can change it
-    global outputFileHandle
+    global out_fh_SA
+    global out_fh_OC
     global _filename
     global peek_next
     global current
     global _error
+    global _qual
+    global _MEMORY
+    global symbol_table
+    global instr_table
     
     toProcess = deque()
-    outputFileHandle = None
+    out_fh_SA = None
+    out_fh_OC = None
     _filename = None
     peek_next = Lex()
     current = Lex()
     _error = True
+    _qual = None
+    _MEMORY = 1000
+    
+    
+    symbol_table = Symbol_Table()
+    instr_table = Instr_Table()
 
 #when an error is found, the expected variable is sent here and error is reported
 def error(expected):
@@ -179,17 +195,21 @@ def error(expected):
     print('Current token: {}'.format(current.token))
     
     if _printfile:
-        print('\nERROR line: {1}\nExpected: {0}'.format(expected, current.line), file = outputFileHandle)
-        print('Current lexeme: {}'.format(current.lexeme), file = outputFileHandle)
-        print('Current token: {}'.format(current.token), file = outputFileHandle)
+        print('\nERROR line: {1}\nExpected: {0}'.format(expected, current.line), file = out_fh_SA)
+        print('Current lexeme: {}'.format(current.lexeme), file = out_fh_SA)
+        print('Current token: {}'.format(current.token), file = out_fh_SA)
     
     _error = False
    
-#set outputFileHandle 
+#set out_fh_SA 
 def setFileHandle():
-    #tell python we willingly want to change the global variable outputFileHandle
-    global outputFileHandle
-    outputFileHandle = open(_filename + '.SA','w')
+    global out_fh_SA
+    global out_fh_OC
+
+    #tell python we willingly want to change the global variable out_fh_SA
+    out_fh_SA = open(_filename + '.SA','w')
+    #tell python we willingly want to change the global variable out_fh_OC
+    out_fh_OC = open(_filename + '.OC','w')
     
 #set current to the next variable to process
 def getNext():
@@ -211,12 +231,12 @@ def printInfo():
         if _printcmd:
             print('Token: {0:14} Lexeme: {1:14} Line: {2:1}'.format(current.token, current.lexeme, current.line))
         if _printfile:
-            print('Token: {0:14} Lexeme: {1:14} Line: {2:1}'.format(current.token, current.lexeme, current.line), file = outputFileHandle)
+            print('Token: {0:14} Lexeme: {1:14} Line: {2:1}'.format(current.token, current.lexeme, current.line), file = out_fh_SA)
     else:
         if _printcmd:
             print('ERROR: current is empty')
         if _printfile:
-            print('ERROR: current is empty', file = outputFileHandle)
+            print('ERROR: current is empty', file = out_fh_SA)
 
 ############################    
 ####  Production Rules  ####
@@ -227,7 +247,7 @@ def rat15S():
     if _printcmd:
         print('<Rat15S>  ::=   <Opt Function Definitions>  @@  <Opt Declaration List> @@  <Statement List> ')
     if _printfile:
-        print('<Rat15S>  ::=   <Opt Function Definitions>  @@  <Opt Declaration List> @@  <Statement List> ', file = outputFileHandle)
+        print('<Rat15S>  ::=   <Opt Function Definitions>  @@  <Opt Declaration List> @@  <Statement List> ', file = out_fh_SA)
     
     optFunctionDefinitions()
     
@@ -254,7 +274,7 @@ def optFunctionDefinitions():
     if _printcmd:
         print('<Opt Function Definitions> ::= <Function Definitions> | <Empty>')
     if _printfile:
-        print('<Opt Function Definitions> ::= <Function Definitions> | <Empty>', file = outputFileHandle) 
+        print('<Opt Function Definitions> ::= <Function Definitions> | <Empty>', file = out_fh_SA) 
     
     if current.lexeme == 'function':
         functionDefinitions()
@@ -268,7 +288,7 @@ def functionDefinitions():
     if _printcmd:
         print('<Function Definitions> ::= <Function> | <Function> <Function Definitions>')
     if _printfile:
-        print('<Function Definitions> ::= <Function> | <Function> <Function Definitions>', file = outputFileHandle)
+        print('<Function Definitions> ::= <Function> | <Function> <Function Definitions>', file = out_fh_SA)
     
     #continue gathering function definitions until there are no more to report
     while True:
@@ -281,7 +301,7 @@ def function():
     if _printcmd:
         print('<Function> ::= function  <Identifier> [ <Opt Parameter List> ] <Opt Declaration List>  <Body>')
     if _printfile:
-        print('<Function> ::= function  <Identifier> [ <Opt Parameter List> ] <Opt Declaration List>  <Body>', file = outputFileHandle)
+        print('<Function> ::= function  <Identifier> [ <Opt Parameter List> ] <Opt Declaration List>  <Body>', file = out_fh_SA)
     
     #function
     if current.lexeme == 'function':
@@ -318,7 +338,7 @@ def optParameterList():
     if _printcmd:
         print('<Opt Parameter List> ::=  <Parameter List> | <Empty>')
     if _printfile:
-        print('<Opt Parameter List> ::=  <Parameter List> | <Empty>', file = outputFileHandle)
+        print('<Opt Parameter List> ::=  <Parameter List> | <Empty>', file = out_fh_SA)
     
     if current.token == 'identifier':
         parameterList()
@@ -332,7 +352,7 @@ def parameterList():
     if _printcmd:
         print('<Parameter List> ::= <Parameter> | <Parameter> , <Parameter List>')
     if _printfile:
-        print('<Parameter List> ::= <Parameter> | <Parameter> , <Parameter List>', file = outputFileHandle)
+        print('<Parameter List> ::= <Parameter> | <Parameter> , <Parameter List>', file = out_fh_SA)
     
     parameter()
     
@@ -345,7 +365,7 @@ def parameter():
     if _printcmd:
         print('<Parameter> ::=  < IDs > : <Qualifier>')
     if _printfile:
-        print('<Parameter> ::=  < IDs > : <Qualifier>', file = outputFileHandle)
+        print('<Parameter> ::=  < IDs > : <Qualifier>', file = out_fh_SA)
     
     if current.token == 'identifier':
         getNext()
@@ -367,7 +387,7 @@ def qualifier():
     if _printcmd:
         print('<Qualifier> ::= int | boolean | real')
     if _printfile:
-        print('<Qualifier> ::= int | boolean | real', file = outputFileHandle)
+        print('<Qualifier> ::= int | boolean | real', file = out_fh_SA)
     
     if current.lexeme == 'int' or current.lexeme == 'boolean' or current.lexeme == 'real':
         if current.lexeme == 'int':
@@ -386,7 +406,7 @@ def body():
     if _printcmd:
         print('<Body>  ::=  {  < Statement List>  }')
     if _printfile:
-        print('<Body>  ::=  {  < Statement List>  }', file = outputFileHandle)
+        print('<Body>  ::=  {  < Statement List>  }', file = out_fh_SA)
     
     if current.lexeme == '{':
         getNext()
@@ -402,7 +422,7 @@ def optDeclarationList():
     if _printcmd:
         print('<Opt Declaration List> ::= <Declaration List> | <Empty>')
     if _printfile:
-        print('<Opt Declaration List> ::= <Declaration List> | <Empty>', file = outputFileHandle)
+        print('<Opt Declaration List> ::= <Declaration List> | <Empty>', file = out_fh_SA)
     
     #check for qualifier
     if current.lexeme == 'int' or current.lexeme == 'boolean' or current.lexeme == 'real':
@@ -417,7 +437,7 @@ def declarationList():
     if _printcmd:
         print('<Declaration List> := <Declaration> ; | <Declaration> ; <Declaration List>')
     if _printfile:
-        print('<Declaration List> := <Declaration> ; | <Declaration> ; <Declaration List>', file = outputFileHandle)
+        print('<Declaration List> := <Declaration> ; | <Declaration> ; <Declaration List>', file = out_fh_SA)
     
     declaration()
     
@@ -434,7 +454,7 @@ def declaration():
     if _printcmd:
         print('<Declaration> ::= <Qualifier> <IDs>')
     if _printfile:
-        print('<Declaration> ::= <Qualifier> <IDs>', file = outputFileHandle)
+        print('<Declaration> ::= <Qualifier> <IDs>', file = out_fh_SA)
     
     qualifier()
     ids(True)
@@ -445,7 +465,7 @@ def ids(add):
     if _printcmd:
         print('<IDs> ::=  <Identifier> | <Identifier>, <IDs>')
     if _printfile:
-        print('<IDs> ::=  <Identifier> | <Identifier>, <IDs>', file = outputFileHandle)
+        print('<IDs> ::=  <Identifier> | <Identifier>, <IDs>', file = out_fh_SA)
 
     if current.token == 'identifier':
         
@@ -482,7 +502,7 @@ def statementList():
     if _printcmd:
         print('<Statement List> ::= <Statement> | <Statement> <Statement List>')
     if _printfile:
-        print('<Statement List> ::= <Statement> | <Statement> <Statement List>', file = outputFileHandle)
+        print('<Statement List> ::= <Statement> | <Statement> <Statement List>', file = out_fh_SA)
     
     while True:
         statement()
@@ -496,7 +516,7 @@ def statement():
     if _printcmd:
         print('<Statement> ::=  <Compound> | <Assign> | <If> |  <Return> | <Write> | <Read> | <While>')
     if _printfile:
-        print('<Statement> ::=  <Compound> | <Assign> | <If> |  <Return> | <Write> | <Read> | <While>', file = outputFileHandle)
+        print('<Statement> ::=  <Compound> | <Assign> | <If> |  <Return> | <Write> | <Read> | <While>', file = out_fh_SA)
     
     #compound starts with '{' so we test for compound by looking for '{' lexeme in current
     if current.lexeme == '{':
@@ -527,7 +547,7 @@ def compound():
     if _printcmd:
         print('<Compound> ::= {  <Statement List>  }')
     if _printfile:
-        print('<Compound> ::= {  <Statement List>  }', file = outputFileHandle)
+        print('<Compound> ::= {  <Statement List>  }', file = out_fh_SA)
     
     if current.lexeme == '{':
         getNext()
@@ -544,7 +564,7 @@ def assign():
     if _printcmd:
         print('<Assign> ::=   <Identifier> := <Expression> ;')
     if _printfile:
-        print('<Assign> ::=   <Identifier> := <Expression> ;', file = outputFileHandle)
+        print('<Assign> ::=   <Identifier> := <Expression> ;', file = out_fh_SA)
     
     if current.token == 'identifier':
         save = symbol_table.verify(current)
@@ -570,7 +590,7 @@ def _if():
     if _printcmd:
         print('<If> ::= if ( <Condition> ) <Statement > <ifPrime>')
     if _printfile:
-        print('<If> ::= if ( <Condition> ) <Statement > <ifPrime>', file = outputFileHandle)
+        print('<If> ::= if ( <Condition> ) <Statement > <ifPrime>', file = out_fh_SA)
     
     if current.lexeme == 'if':
         getNext()
@@ -597,25 +617,35 @@ def ifPrime():
     if _printcmd:
         print('<ifPrime> ::= endif | else <Statement> endif')
     if _printfile:
-        print('<ifPrime> ::= endif | else <Statement> endif', file = outputFileHandle)
+        print('<ifPrime> ::= endif | else <Statement> endif', file = out_fh_SA)
+    
+    instr_table.back_patch(instr_table.getCurrentAddress())
     
     if current.lexeme == 'endif':
         getNext()
     elif current.lexeme == 'else':
+        #must go to else and skip the else statement
+        instr_table.back_patch(instr_table.getCurrentAddress()+1)
+        instr_table.push_stack(instr_table.getCurrentAddress())
+        instr_table.gen_instr('JUMP', -999)
+        #<TODO> Else not working
+        
         getNext()
         statement()
-        getNext() if current.lexeme == 'endif' else error('endif')
+        if current.lexeme == 'endif':
+            instr_table.back_patch(instr_table.getCurrentAddress())
+            getNext()
+        else:
+            error('endif')
     else:
         error('endif | else')
-        
-
 
 # <Return> ::=  return ; |  return <Expression> ;
 def _return():
     if _printcmd:
         print('<Return> ::=  return ; |  return <Expression> ;')
     if _printfile:
-        print('<Return> ::=  return ; |  return <Expression> ;', file = outputFileHandle)
+        print('<Return> ::=  return ; |  return <Expression> ;', file = out_fh_SA)
     
     peek()
     
@@ -648,7 +678,7 @@ def write():
     if _printcmd:
         print('<Write> ::=   write ( <Expression>);')
     if _printfile:
-        print('<Write> ::=   write ( <Expression>);', file = outputFileHandle)
+        print('<Write> ::=   write ( <Expression>);', file = out_fh_SA)
     
     if current.lexeme == 'write':
         getNext()
@@ -656,7 +686,9 @@ def write():
         if current.lexeme == '(':
             getNext()
             expression()
-        
+            
+            instr_table.gen_instr('STDOUT', -999)
+            
             if current.lexeme == ')':
                 getNext()
                     
@@ -676,15 +708,20 @@ def read():
     if _printcmd:
         print('<Read> ::= read ( <IDs> );')
     if _printfile:
-        print('<Read> ::= read ( <IDs> );', file = outputFileHandle)
+        print('<Read> ::= read ( <IDs> );', file = out_fh_SA)
     
     if current.lexeme == 'read':
         getNext()
         
         if current.lexeme == '(':
             getNext()
+            instr_table.gen_instr('STDIN', -999)
+            # instr_table.gen_instr('POPM', symbol_table.verify(current))
+            # instr_table.gen_instr('PUSHM', -999)
+            # 
             ids(False)
-            
+  #          instr_table.gen_instr('PUSHM', -999)
+
             if current.lexeme == ')':
                 getNext()
                 
@@ -704,7 +741,7 @@ def _while():
     if _printcmd:
         print('<While> ::= while ( <Condition>  )  <Statement>')
     if _printfile:
-        print('<While> ::= while ( <Condition>  )  <Statement>', file = outputFileHandle)
+        print('<While> ::= while ( <Condition>  )  <Statement>', file = out_fh_SA)
     
     if current.lexeme == 'while':
         instr_table.gen_instr('LABEL', -999)
@@ -733,7 +770,7 @@ def condition():
     if _printcmd:
         print('<Condition> ::= <Expression> <Relop> <Expression>')
     if _printfile:
-        print('<Condition> ::= <Expression> <Relop> <Expression>', file = outputFileHandle)
+        print('<Condition> ::= <Expression> <Relop> <Expression>', file = out_fh_SA)
     
     expression()
     inst = relop()
@@ -749,7 +786,7 @@ def relop():
     if _printcmd:
         print('<Relop> ::=   = |  !=  |   >   | <   |  =>   | <=')
     if _printfile:
-        print('<Relop> ::=   = |  !=  |   >   | <   |  =>   | <=', file = outputFileHandle)
+        print('<Relop> ::=   = |  !=  |   >   | <   |  =>   | <=', file = out_fh_SA)
     
     if current.lexeme == '=':
         getNext()
@@ -773,7 +810,7 @@ def expression():
     if _printcmd:
         print('<Expression> ::= <Term> <ExpressionPrime>')
     if _printfile:
-        print('<Expression> ::= <Term> <ExpressionPrime>', file = outputFileHandle)
+        print('<Expression> ::= <Term> <ExpressionPrime>', file = out_fh_SA)
     
     term()
     expressionPrime()
@@ -783,7 +820,7 @@ def expressionPrime():
     if _printcmd:
         print('<ExpressionPrime> ::= + <Term> <ExpressionPrime> | - <Term> <ExpressionPrime> | <empty>')
     if _printfile:
-        print('<ExpressionPrime> ::= + <Term> <ExpressionPrime> | - <Term> <ExpressionPrime> | <empty>', file = outputFileHandle)
+        print('<ExpressionPrime> ::= + <Term> <ExpressionPrime> | - <Term> <ExpressionPrime> | <empty>', file = out_fh_SA)
     
     if current.lexeme == '+':
         getNext()
@@ -806,7 +843,7 @@ def term():
     if _printcmd:
         print('<Term> ::= <Factor> <TermPrime>')
     if _printfile:
-        print('<Term> ::= <Factor> <TermPrime>', file = outputFileHandle)
+        print('<Term> ::= <Factor> <TermPrime>', file = out_fh_SA)
     
     factor()
     termPrime()
@@ -816,7 +853,7 @@ def termPrime():
     if _printcmd:
         print('<TermPrime> ::= * <Factor> <TermPrime> | / <Factor> <TermPrime> | <empty>')
     if _printfile:
-        print('<TermPrime> ::= * <Factor> <TermPrime> | / <Factor> <TermPrime> | <empty>', file = outputFileHandle)
+        print('<TermPrime> ::= * <Factor> <TermPrime> | / <Factor> <TermPrime> | <empty>', file = out_fh_SA)
     
     if current.lexeme == '*':
         getNext()
@@ -840,7 +877,7 @@ def factor():
     if _printcmd:
         print('<Factor> ::= - <Primary> | <Primary>')
     if _printfile:
-        print('<Factor> ::= - <Primary> | <Primary>', file = outputFileHandle)
+        print('<Factor> ::= - <Primary> | <Primary>', file = out_fh_SA)
     
     if current == '-':
         getNext()
@@ -853,7 +890,7 @@ def primary():
     if _printcmd:
         print('<Primary> ::= <Identifier> | <Integer> | <Identifier> [<IDs>] | ( <Expression> ) | <Real> | true | false')
     if _printfile:
-        print('<Primary> ::= <Identifier> | <Integer> | <Identifier> [<IDs>] | ( <Expression> ) | <Real> | true | false', file = outputFileHandle)
+        print('<Primary> ::= <Identifier> | <Integer> | <Identifier> [<IDs>] | ( <Expression> ) | <Real> | true | false', file = out_fh_SA)
 
     if current.token == 'identifier':
         instr_table.gen_instr('PUSHM', symbol_table.verify(current))
@@ -867,6 +904,7 @@ def primary():
 
     #    <Integer>
     elif current.token == 'integer':
+        instr_table.gen_instr('PUSHI', int(current.lexeme))
         getNext()
         
     #    ( <Expression> ) 
@@ -880,9 +918,11 @@ def primary():
         getNext()
     #     true
     elif current.lexeme == 'true':
+        instr_table.gen_instr('PUSHI', 1)
         getNext()
     #     false
     elif current.lexeme == 'false':
+        instr_table.gen_instr('PUSHI', 0)
         getNext()
     
     #else does not meet primary requirements
@@ -895,7 +935,7 @@ def empty():
     if _printcmd:
         print('<Empty> ::= epsilon')
     if _printfile:
-        print('<Empty> ::= epsilon', file = outputFileHandle)
+        print('<Empty> ::= epsilon', file = out_fh_SA)
 
 
 #purpose: Drive Syntax Analyser
@@ -935,8 +975,8 @@ def main():
             print('Your syntactic analysis of {} has been saved as {} in the working directory.'.format(_filename,_filename + '.SA'))
         
         #print tables <DEBUG>
-        symbol_table.list()
         instr_table.print_table()
+        symbol_table.list()
         
         #ask user if they would like to run another file    
         _continue = input('\nWould you like to process another file? (yes/no): ')
