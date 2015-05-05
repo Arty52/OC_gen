@@ -619,19 +619,18 @@ def ifPrime():
     if _printfile:
         print('<ifPrime> ::= endif | else <Statement> endif', file = out_fh_SA)
     
-    instr_table.back_patch(instr_table.getCurrentAddress())
-    
     if current.lexeme == 'endif':
+        instr_table.back_patch(instr_table.getCurrentAddress())
         getNext()
     elif current.lexeme == 'else':
         #must go to else and skip the else statement
         instr_table.back_patch(instr_table.getCurrentAddress()+1)
         instr_table.push_stack(instr_table.getCurrentAddress())
         instr_table.gen_instr('JUMP', -999)
-        #<TODO> Else not working
         
         getNext()
         statement()
+        
         if current.lexeme == 'endif':
             instr_table.back_patch(instr_table.getCurrentAddress())
             getNext()
@@ -963,10 +962,10 @@ def main():
             setFileHandle()
             
             #Syntax Analyser
-            print('\nSyntax Analyser running...')
+            print('\nObject Code Generator running...')
             getNext()                                       #get input
             rat15S()                                        #call Syntax Analyser
-            print('\n...Syntax Analyser finished!\n')
+            print('\n...Object Code Generator finished!\n')
             
             #report to user if error or no error in syntax analysis
             print('There were no errors!') if _error else print('An error was found!')
@@ -974,9 +973,12 @@ def main():
             #report to user where the contents of the file have been saved
             print('Your syntactic analysis of {} has been saved as {} in the working directory.'.format(_filename,_filename + '.SA'))
         
-        #print tables <DEBUG>
-        instr_table.print_table()
-        symbol_table.list()
+            #print object code tables
+            instr_table.print_table()
+            print('\n', file = out_fh_OC)
+            symbol_table.list()
+            
+            print('Your object code of {} has been saved as {} in the working directory.'.format(_filename,_filename + '.OC'))
         
         #ask user if they would like to run another file    
         _continue = input('\nWould you like to process another file? (yes/no): ')
