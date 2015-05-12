@@ -17,12 +17,14 @@ _printfile = True            #toggles print to filehandle feature for the SA pro
 toProcess = deque()
 current = Lex()
 peek_next = Lex()
+peek_prev = Lex()
 _filename = None
 out_fh_SA = None
 out_fh_OC = None
 _error = True
 _qual = None
 _MEMORY = 1000
+_TEMP = None
 
 
 class Symbol:
@@ -165,6 +167,7 @@ def reset():
     global out_fh_OC
     global _filename
     global peek_next
+    global peek_prev
     global current
     global _error
     global _qual
@@ -177,6 +180,7 @@ def reset():
     out_fh_OC = None
     _filename = None
     peek_next = Lex()
+    peek_prev = Lex()
     current = Lex()
     _error = True
     _qual = None
@@ -214,7 +218,11 @@ def setFileHandle():
 #set current to the next variable to process
 def getNext():
     global current                          #access the current global variable
+    global peek_prev
 
+    if current:
+        peek_prev = current
+    
     if toProcess:                           #if not empty
         current = toProcess.popleft()
         printInfo()
@@ -806,6 +814,7 @@ def relop():
 
 # <Expression> ::= <Term> <ExpressionPrime>
 def expression():
+    
     if _printcmd:
         print('<Expression> ::= <Term> <ExpressionPrime>')
     if _printfile:
@@ -816,6 +825,7 @@ def expression():
 
 # <ExpressionPrime> ::= + <Term> <ExpressionPrime> | - <Term> <ExpressionPrime> | <empty>
 def expressionPrime():
+    
     if _printcmd:
         print('<ExpressionPrime> ::= + <Term> <ExpressionPrime> | - <Term> <ExpressionPrime> | <empty>')
     if _printfile:
@@ -886,6 +896,7 @@ def factor():
         
 # <Primary> ::= <Identifier> | <Integer> | <Identifier> [<IDs>] | ( <Expression> ) | <Real> | true | false
 def primary():
+    
     if _printcmd:
         print('<Primary> ::= <Identifier> | <Integer> | <Identifier> [<IDs>] | ( <Expression> ) | <Real> | true | false')
     if _printfile:

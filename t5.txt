@@ -1,0 +1,11 @@
+@@
+int i, max;
+@@
+if(i < max)
+{
+i := i+1;
+}
+else
+{
+max := i;
+} endif
